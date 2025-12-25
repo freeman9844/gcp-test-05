@@ -1,8 +1,11 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Test gRPC Server using grpcurl
 # Usage: ./test-grpc.sh [HOST:PORT] [--tls]
+
+# Error handler
+trap 'echo "Error on line $LINENO. Exit code: $?"' ERR
 
 HOST="${1:-localhost:50051}"
 USE_TLS="${2}"

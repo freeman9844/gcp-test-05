@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
 	pb "grpc-server/proto"
 
@@ -29,7 +31,11 @@ type server struct {
 
 // SayHello implements helloworld.GreeterServer
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Printf("Warning: failed to get hostname: %v", err)
+		hostname = "unknown"
+	}
 	log.Printf("Received: %v", in.GetName())
 	return &pb.HelloReply{
 		Message:  fmt.Sprintf("Hello %s from TLS server!", in.GetName()),
@@ -82,8 +88,21 @@ func main() {
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 
-	log.Printf("TLS gRPC server listening at %v (version: %s)", lis.Addr(), version)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	// Setup graceful shutdown
+	go func() {
+		log.Printf("TLS gRPC server listening at %v (version: %s)", lis.Addr(), version)
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down gRPC server...")
+
+	// Gracefully stop the server
+	s.GracefulStop()
+	log.Println("Server stopped gracefully")
 }

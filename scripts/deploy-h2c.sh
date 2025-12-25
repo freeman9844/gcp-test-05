@@ -1,8 +1,11 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Deploy H2C gRPC Server to GKE
 # Usage: ./deploy-h2c.sh [namespace]
+
+# Error handler
+trap 'echo "Error on line $LINENO. Exit code: $?"' ERR
 
 NAMESPACE="${1:-default}"
 

@@ -17,6 +17,10 @@ spec:
         app: grpc-server-tls
         version: v1
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
       containers:
       - name: grpc-server
         image: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/grpc-server-tls:v1
@@ -40,18 +44,28 @@ spec:
             memory: "128Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
         livenessProbe:
           grpc:
             port: 50051
           initialDelaySeconds: 10
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           grpc:
             port: 50051
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
       volumes:
       - name: tls-certs
         secret:

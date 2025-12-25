@@ -1,13 +1,26 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Build and Push gRPC Server Images to Artifact Registry
-# Usage: ./build-and-push.sh [PROJECT_ID] [REGION] [REPOSITORY]
+# Usage: ./build-and-push.sh [PROJECT_ID] [REGION] [REPOSITORY] [VERSION]
 
-PROJECT_ID="${1:-your-project-id}"
+# Error handler
+trap 'echo "Error on line $LINENO. Exit code: $?"' ERR
+
+# Input validation and defaults
+PROJECT_ID="${1:-}"
 REGION="${2:-us-central1}"
 REPOSITORY="${3:-grpc-servers}"
 VERSION="${4:-v1}"
+
+# Validate required parameters
+if [ -z "$PROJECT_ID" ]; then
+  echo "Error: PROJECT_ID is required"
+  echo "Usage: $0 PROJECT_ID [REGION] [REPOSITORY] [VERSION]"
+  echo ""
+  echo "Example: $0 my-project us-central1 grpc-servers v1"
+  exit 1
+fi
 
 echo "=== Building and Pushing gRPC Server Images ==="
 echo "Project ID: $PROJECT_ID"

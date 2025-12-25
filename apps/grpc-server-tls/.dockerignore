@@ -1,0 +1,25 @@
+.git
+.gitignore
+*.md
+README*
+LICENSE
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+
+# Test files
+*_test.go
+test/
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
