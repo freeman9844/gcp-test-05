@@ -1,226 +1,318 @@
-# GKE gRPC 프로젝트 코드 정리 완료
+# GKE gRPC 프로젝트 Best Practices 개선 완료
 
 ## 📋 작업 요약
 
-기존 GKE 가이드 문서를 기반으로 완전한 gRPC 서버 레퍼런스 프로젝트를 구성했습니다. H2C와 TLS 두 가지 배포 시나리오를 지원하며, 멀티 버전 트래픽 분할을 통한 카나리 배포도 가능합니다.
-
-## ✅ 생성된 파일
-
-### 애플리케이션 코드 (6개 파일)
-
-#### H2C gRPC 서버
-- [apps/grpc-server-h2c/main.go](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-h2c/main.go) - H2C 프로토콜 gRPC 서버
-- [apps/grpc-server-h2c/proto/helloworld.proto](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-h2c/proto/helloworld.proto) - gRPC 서비스 정의
-- [apps/grpc-server-h2c/Dockerfile](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-h2c/Dockerfile) - 멀티 스테이지 빌드
-- [apps/grpc-server-h2c/go.mod](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-h2c/go.mod) - Go 모듈 정의
-
-#### TLS gRPC 서버
-- [apps/grpc-server-tls/main.go](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-tls/main.go) - TLS 지원 gRPC 서버
-- [apps/grpc-server-tls/proto/helloworld.proto](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-tls/proto/helloworld.proto) - gRPC 서비스 정의
-- [apps/grpc-server-tls/Dockerfile](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-tls/Dockerfile) - TLS 인증서 마운트 지원
-- [apps/grpc-server-tls/go.mod](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-tls/go.mod) - Go 모듈 정의
+전체 프로젝트를 best practices 기준으로 점검하고, High Priority 개선사항을 모두 적용했습니다.
 
 ---
 
-### Kubernetes 매니페스트 (17개 파일)
+## ✅ 적용된 개선사항
 
-#### H2C 배포 (4개)
-- [k8s/h2c/deployment.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/h2c/deployment.yaml) - Deployment with health probes
-- [k8s/h2c/service.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/h2c/service.yaml) - Service with HTTP2 protocol
-- [k8s/h2c/gateway.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/h2c/gateway.yaml) - Gateway API resource
-- [k8s/h2c/httproute.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/h2c/httproute.yaml) - HTTPRoute configuration
+### 1. Go 코드 개선
 
-#### TLS 배포 (5개)
-- [k8s/tls/deployment.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/tls/deployment.yaml) - Deployment with TLS secret mount
-- [k8s/tls/service.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/tls/service.yaml) - Service with HTTPS protocol
-- [k8s/tls/gateway.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/tls/gateway.yaml) - Gateway with TLS termination
-- [k8s/tls/httproute.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/tls/httproute.yaml) - HTTPRoute for TLS
-- [k8s/tls/secret.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/tls/secret.yaml) - Secret template
+#### Graceful Shutdown 구현
+**변경 파일**: `apps/grpc-server-h2c/main.go`, `apps/grpc-server-tls/main.go`
 
-#### 멀티 버전 배포 (6개)
-- [k8s/multi-version/deployment-v1.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/deployment-v1.yaml) - v1 deployment
-- [k8s/multi-version/deployment-v2.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/deployment-v2.yaml) - v2 deployment
-- [k8s/multi-version/service-v1.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/service-v1.yaml) - v1 service
-- [k8s/multi-version/service-v2.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/service-v2.yaml) - v2 service
-- [k8s/multi-version/httproute-split.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/httproute-split.yaml) - 가중치 기반 트래픽 분할
-- [k8s/multi-version/backendconfig.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/backendconfig.yaml) - BackendConfig
+```go
+// Signal handling 추가
+import (
+    "os/signal"
+    "syscall"
+)
 
----
+// Graceful shutdown 구현
+go func() {
+    log.Printf("gRPC server listening...")
+    s.Serve(lis)
+}()
 
-### 인증서 및 스크립트 (6개 파일)
-
-#### 인증서 생성
-- [certs/generate-certs.sh](file:///Users/jungwoonlee/gke_test_001/certs/generate-certs.sh) - OpenSSL 인증서 생성 스크립트
-- [certs/README.md](file:///Users/jungwoonlee/gke_test_001/certs/README.md) - 인증서 생성 가이드
-
-#### 배포 자동화
-- [scripts/build-and-push.sh](file:///Users/jungwoonlee/gke_test_001/scripts/build-and-push.sh) - Docker 이미지 빌드 및 푸시
-- [scripts/deploy-h2c.sh](file:///Users/jungwoonlee/gke_test_001/scripts/deploy-h2c.sh) - H2C 서버 배포
-- [scripts/deploy-tls.sh](file:///Users/jungwoonlee/gke_test_001/scripts/deploy-tls.sh) - TLS 서버 배포
-- [scripts/test-grpc.sh](file:///Users/jungwoonlee/gke_test_001/scripts/test-grpc.sh) - grpcurl 테스트
-
----
-
-### 문서 (3개 파일)
-- [README.md](file:///Users/jungwoonlee/gke_test_001/README.md) - 한국어 프로젝트 가이드
-- [README.en.md](file:///Users/jungwoonlee/gke_test_001/README.en.md) - 영어 프로젝트 가이드
-- [GKE_Guide.md](file:///Users/jungwoonlee/gke_test_001/GKE_Guide.md) - GKE 배포 권장사항 (기존)
-
----
-
-## 🎯 주요 기능
-
-### 1. H2C (HTTP/2 Cleartext) 서버
-- 인증서 관리 불필요
-- VPC 내부 보안 네트워킹 활용
-- 간단한 설정으로 빠른 배포
-
-### 2. TLS 서버
-- End-to-End TLS 암호화
-- ALB에서 TLS Termination
-- 프로덕션 환경에 적합
-
-### 3. 멀티 버전 트래픽 분할
-- 가중치 기반 카나리 배포
-- 점진적 롤아웃
-- 즉시 롤백 가능
-
-### 4. 자동화 스크립트
-- 이미지 빌드 및 푸시 자동화
-- 배포 프로세스 간소화
-- grpcurl을 통한 테스트 자동화
-
----
-
-## 📂 프로젝트 구조
-
-```
-gke_test_001/
-├── apps/                    # 애플리케이션 소스 코드
-│   ├── grpc-server-h2c/    # H2C 서버 (4 files)
-│   └── grpc-server-tls/    # TLS 서버 (4 files)
-├── k8s/                     # Kubernetes 매니페스트
-│   ├── h2c/                # H2C 배포 (4 files)
-│   ├── tls/                # TLS 배포 (5 files)
-│   └── multi-version/      # 멀티 버전 (6 files)
-├── certs/                   # 인증서 생성 (2 files)
-├── scripts/                 # 배포 스크립트 (4 files)
-└── docs/                    # 문서 (3 files)
+quit := make(chan os.Signal, 1)
+signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+<-quit
+log.Println("Shutting down gRPC server...")
+s.GracefulStop()
 ```
 
-**총 32개 파일 생성**
+**효과**:
+- SIGTERM/SIGINT 시그널 처리
+- 진행 중인 요청 완료 후 종료
+- Kubernetes 롤링 업데이트 시 안전한 종료
+
+#### 에러 핸들링 개선
+```go
+// Before
+hostname, _ := os.Hostname()
+
+// After
+hostname, err := os.Hostname()
+if err != nil {
+    log.Printf("Warning: failed to get hostname: %v", err)
+    hostname = "unknown"
+}
+```
 
 ---
 
-## 🚀 사용 방법
+### 2. Kubernetes 보안 강화
 
-### 빠른 시작
+#### Pod-level Security Context
+**변경 파일**: 모든 Deployment YAML (6개 파일)
+
+```yaml
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    fsGroup: 65532
+```
+
+#### Container-level Security Context
+```yaml
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+```
+
+**효과**:
+- 비루트 사용자로 실행
+- 불필요한 권한 제거
+- 보안 취약점 최소화
+
+#### Health Probe 개선
+```yaml
+livenessProbe:
+  grpc:
+    port: 50051
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5        # 추가
+  failureThreshold: 3      # 추가
+
+readinessProbe:
+  grpc:
+    port: 50051
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3        # 추가
+  failureThreshold: 2      # 추가
+```
+
+#### Resource 최적화
+```yaml
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "128Mi"    # requests = limits (Autopilot 권장)
+    cpu: "100m"
+```
+
+---
+
+### 3. Docker 최적화
+
+#### .dockerignore 추가
+**새 파일**: `apps/grpc-server-h2c/.dockerignore`, `apps/grpc-server-tls/.dockerignore`
+
+```
+.git
+.gitignore
+*.md
+README*
+LICENSE
+.vscode
+.idea
+*.swp
+.DS_Store
+*_test.go
+test/
+```
+
+**효과**:
+- 빌드 컨텍스트 크기 감소
+- 빌드 속도 향상
+- 불필요한 파일 제외
+
+---
+
+### 4. 스크립트 개선
+
+#### 에러 핸들링 강화
+**변경 파일**: 모든 스크립트 (4개 파일)
 
 ```bash
-# 1. 이미지 빌드 및 푸시
-cd scripts
-./build-and-push.sh PROJECT_ID REGION REPOSITORY v1
+# Before
+#!/bin/bash
+set -e
 
-# 2. H2C 서버 배포
-./deploy-h2c.sh
+# After
+#!/bin/bash
+set -euo pipefail
 
-# 3. 테스트
-GATEWAY_IP=$(kubectl get gateway grpc-gateway-h2c -o jsonpath='{.status.addresses[0].value}')
-./test-grpc.sh $GATEWAY_IP:80
+# Error handler
+trap 'echo "Error on line $LINENO. Exit code: $?"' ERR
 ```
 
-### TLS 배포
+**개선 내용**:
+- `set -u`: 미정의 변수 사용 시 에러
+- `set -o pipefail`: 파이프라인 에러 감지
+- `trap`: 에러 발생 시 라인 번호 표시
+
+#### 입력 검증 추가
+**파일**: `scripts/build-and-push.sh`
 
 ```bash
-# 1. 인증서 생성
-cd certs
-./generate-certs.sh
+PROJECT_ID="${1:-}"
 
-# 2. Secret 생성
-kubectl create secret tls grpc-tls-secret --cert=output/server.crt --key=output/server.key
-kubectl create secret tls grpc-gateway-tls-secret --cert=output/server.crt --key=output/server.key
-
-# 3. 배포
-cd ../scripts
-./deploy-tls.sh
+if [ -z "$PROJECT_ID" ]; then
+  echo "Error: PROJECT_ID is required"
+  echo "Usage: $0 PROJECT_ID [REGION] [REPOSITORY] [VERSION]"
+  exit 1
+fi
 ```
 
-### 카나리 배포
+---
 
-```bash
-# 1. v1, v2 이미지 빌드
-./build-and-push.sh PROJECT_ID REGION REPOSITORY v1
-./build-and-push.sh PROJECT_ID REGION REPOSITORY v2
+## 📊 변경 통계
 
-# 2. 멀티 버전 배포
-kubectl apply -f ../k8s/multi-version/
+### 수정된 파일 (12개)
 
-# 3. 트래픽 분할 조정 (httproute-split.yaml 수정)
-# - weight: 90  # v1
-# - weight: 10  # v2
-```
+#### Go 소스 코드 (2개)
+- [apps/grpc-server-h2c/main.go](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-h2c/main.go)
+- [apps/grpc-server-tls/main.go](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-tls/main.go)
+
+#### Kubernetes 매니페스트 (4개)
+- [k8s/h2c/deployment.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/h2c/deployment.yaml)
+- [k8s/tls/deployment.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/tls/deployment.yaml)
+- [k8s/multi-version/deployment-v1.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/deployment-v1.yaml)
+- [k8s/multi-version/deployment-v2.yaml](file:///Users/jungwoonlee/gke_test_001/k8s/multi-version/deployment-v2.yaml)
+
+#### 배포 스크립트 (4개)
+- [scripts/build-and-push.sh](file:///Users/jungwoonlee/gke_test_001/scripts/build-and-push.sh)
+- [scripts/deploy-h2c.sh](file:///Users/jungwoonlee/gke_test_001/scripts/deploy-h2c.sh)
+- [scripts/deploy-tls.sh](file:///Users/jungwoonlee/gke_test_001/scripts/deploy-tls.sh)
+- [scripts/test-grpc.sh](file:///Users/jungwoonlee/gke_test_001/scripts/test-grpc.sh)
+
+#### 새 파일 (2개)
+- [apps/grpc-server-h2c/.dockerignore](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-h2c/.dockerignore)
+- [apps/grpc-server-tls/.dockerignore](file:///Users/jungwoonlee/gke_test_001/apps/grpc-server-tls/.dockerignore)
+
+### Git 통계
+- **Commit**: `refactor: Apply best practices improvements`
+- **Files changed**: 12
+- **Insertions**: 190
+- **Deletions**: 24
 
 ---
 
 ## 🔍 검증 완료 항목
 
-✅ **디렉토리 구조** - 논리적으로 구성됨  
-✅ **Go 소스 코드** - H2C 및 TLS 서버 구현  
-✅ **Proto 파일** - gRPC 서비스 정의  
-✅ **Dockerfile** - 멀티 스테이지 빌드  
-✅ **Kubernetes 매니페스트** - Gateway API 사용  
-✅ **인증서 스크립트** - SAN 포함 OpenSSL  
-✅ **배포 스크립트** - 자동화 및 검증  
-✅ **문서** - 한/영 README 및 가이드  
+### ✅ High Priority (완료)
+1. ✅ Graceful shutdown 구현
+2. ✅ Security context 추가
+3. ✅ .dockerignore 파일 생성
+4. ✅ 스크립트 에러 핸들링 강화
+
+### ⚠️ Medium Priority (향후 적용 권장)
+- Go 의존성 업데이트 (Go 1.23, gRPC v1.68+)
+- Distroless 베이스 이미지 (`gcr.io/distroless/static-debian12`)
+- 구조화된 로깅 (zerolog/zap)
+- 추가 health probe 최적화
+
+### 📝 Low Priority (장기 계획)
+- 단위 테스트 추가
+- CI/CD 파이프라인 (GitHub Actions)
+- NetworkPolicy 설정
+- 아키텍처 다이어그램
 
 ---
 
-## 📚 다음 단계
+## 🚀 다음 단계
 
-1. **실제 GKE 클러스터에 배포**
-   - Gateway API 활성화 확인
-   - Artifact Registry 설정
-   - 이미지 경로 업데이트
+### 즉시 가능
+1. **로컬 테스트**
+   ```bash
+   cd apps/grpc-server-h2c
+   go run main.go
+   # 다른 터미널에서
+   kill -SIGTERM <PID>  # graceful shutdown 확인
+   ```
 
-2. **테스트 및 검증**
-   - grpcurl로 연결 테스트
-   - 부하 테스트로 로드 밸런싱 확인
-   - 멀티 버전 트래픽 분할 검증
+2. **Docker 빌드**
+   ```bash
+   cd apps/grpc-server-h2c
+   docker build -t grpc-server-h2c:test .
+   docker run -p 50051:50051 grpc-server-h2c:test
+   ```
 
-3. **프로덕션 준비**
-   - 실제 도메인 인증서 발급
-   - 모니터링 및 로깅 설정
-   - HPA 및 리소스 최적화
+3. **Kubernetes 배포**
+   ```bash
+   kubectl apply --dry-run=client -f k8s/h2c/deployment.yaml
+   # 문법 검증 후
+   kubectl apply -f k8s/h2c/
+   ```
+
+### 권장 검증
+1. **보안 스캔**
+   ```bash
+   # 이미지 취약점 스캔
+   trivy image grpc-server-h2c:latest
+   
+   # Go 취약점 검사
+   govulncheck ./...
+   ```
+
+2. **코드 품질**
+   ```bash
+   go vet ./...
+   golangci-lint run
+   ```
 
 ---
 
-## 💡 참고 사항
-
-- 모든 스크립트는 실행 권한이 설정되어 있습니다
-- YAML 매니페스트의 `PROJECT_ID`, `REGION`, `REPOSITORY`는 실제 값으로 교체 필요
-- TLS Secret은 배포 전에 생성되어야 합니다
-- Gateway IP 할당에는 몇 분이 소요될 수 있습니다
-
----
-
-## 🔄 GitHub 동기화 완료
-
-프로젝트가 성공적으로 GitHub에 동기화되었습니다!
+## 🔄 GitHub 동기화
 
 **저장소**: https://github.com/freeman9844/gcp-test-05
 
 **커밋 정보**:
-- 📦 42 objects pushed (15.95 KiB)
-- ✅ 33 files committed
-- ➕ 1,701 insertions
-- ➖ 37 deletions
+- 📦 21 objects pushed (3.58 KiB)
+- ✅ 12 files changed
+- ➕ 190 insertions
+- ➖ 24 deletions
 
-**포함된 내용**:
-- ✅ 애플리케이션 소스 코드 (H2C, TLS gRPC 서버)
-- ✅ Kubernetes 매니페스트 (15개 YAML 파일)
-- ✅ 배포 자동화 스크립트 (4개)
-- ✅ 인증서 생성 스크립트
-- ✅ 한/영 문서
-- ✅ .gitignore 설정
+**브랜치**: main (1730865)
 
-프로젝트가 성공적으로 정리되고 GitHub에 동기화되었습니다! 🎉
+---
+
+## 💡 주요 개선 효과
+
+### 보안
+- ✅ 비루트 사용자 실행
+- ✅ 최소 권한 원칙 적용
+- ✅ 불필요한 capabilities 제거
+
+### 안정성
+- ✅ Graceful shutdown으로 안전한 종료
+- ✅ 개선된 health probe로 빠른 장애 감지
+- ✅ 에러 핸들링 강화로 디버깅 용이
+
+### 효율성
+- ✅ .dockerignore로 빌드 속도 향상
+- ✅ Resource limits 최적화
+- ✅ 스크립트 입력 검증으로 실수 방지
+
+---
+
+## 📚 참고 문서
+
+- [Kubernetes Security Best Practices](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
+- [GKE Autopilot Best Practices](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview)
+- [gRPC Go Best Practices](https://grpc.io/docs/languages/go/basics/)
+
+---
+
+Best practices 개선이 성공적으로 완료되었습니다! 🎉
