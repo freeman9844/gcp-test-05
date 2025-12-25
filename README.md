@@ -61,12 +61,21 @@ gke_test_001/
 
 ## ✨ 주요 기능
 
+### 핵심 기능
 - **H2C (HTTP/2 Cleartext)**: 인증서 관리가 간단한 내부 통신용 gRPC 서버
 - **TLS**: 보안 통신을 위한 TLS 지원 gRPC 서버
 - **Gateway API**: 최신 GKE Gateway API를 사용한 L7 로드 밸런싱
 - **멀티 버전 배포**: 가중치 기반 트래픽 분할로 카나리 배포 지원
 - **Health Checks**: gRPC 네이티브 헬스 체크 구현
 - **자동화 스크립트**: 빌드, 배포, 테스트 자동화
+
+### Best Practices 적용
+- **Graceful Shutdown**: SIGTERM/SIGINT 시그널 처리로 안전한 종료
+- **Security Context**: 비루트 사용자 실행 및 최소 권한 원칙
+- **Enhanced Health Probes**: timeout 및 failureThreshold 설정
+- **Optimized Resources**: Autopilot 환경에 최적화된 리소스 설정
+- **Error Handling**: 강화된 스크립트 에러 핸들링 (set -euo pipefail)
+- **Docker Optimization**: .dockerignore를 통한 빌드 최적화
 
 ## 🔧 사전 요구사항
 
@@ -266,10 +275,25 @@ kubectl get httproute grpc-route-h2c -o yaml
 kubectl get service grpc-server-h2c -o yaml | grep appProtocol
 ```
 
-## � 추가 문서
+## 📚 추가 문서
 
 - [GKE_Guide.md](GKE_Guide.md) - GKE 배포 및 운영 권장사항
 - [certs/README.md](certs/README.md) - TLS 인증서 생성 가이드
+- [specs/](specs/) - 프로젝트 기획 및 구현 문서
+  - [implementation_plan.md](specs/implementation_plan.md) - Best practices 개선 계획
+  - [task.md](specs/task.md) - 작업 체크리스트
+  - [walkthrough.md](specs/walkthrough.md) - 프로젝트 완료 요약
+
+## 🔒 보안 및 Best Practices
+
+이 프로젝트는 다음 보안 및 운영 best practices를 따릅니다:
+
+- ✅ **비루트 실행**: 모든 컨테이너는 비루트 사용자(65532)로 실행
+- ✅ **최소 권한**: 불필요한 Linux capabilities 제거
+- ✅ **Graceful Shutdown**: 안전한 서버 종료 및 요청 완료 보장
+- ✅ **향상된 Health Probes**: timeout 및 failureThreshold 설정
+- ✅ **리소스 최적화**: GKE Autopilot에 최적화된 requests/limits
+- ✅ **에러 핸들링**: 강화된 스크립트 에러 처리 및 디버깅
 
 ## 🤝 기여
 

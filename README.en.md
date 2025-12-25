@@ -61,12 +61,21 @@ gke_test_001/
 
 ## ✨ Key Features
 
+### Core Features
 - **H2C (HTTP/2 Cleartext)**: Simple gRPC server for internal communication without certificate management
 - **TLS**: TLS-enabled gRPC server for secure communication
 - **Gateway API**: Modern L7 load balancing using GKE Gateway API
 - **Multi-version Deployment**: Canary deployment support with weighted traffic splitting
 - **Health Checks**: Native gRPC health check implementation
 - **Automation Scripts**: Build, deploy, and test automation
+
+### Best Practices Applied
+- **Graceful Shutdown**: Safe termination with SIGTERM/SIGINT signal handling
+- **Security Context**: Non-root execution and least privilege principle
+- **Enhanced Health Probes**: Configured timeout and failureThreshold
+- **Optimized Resources**: Resource settings optimized for Autopilot
+- **Error Handling**: Enhanced script error handling (set -euo pipefail)
+- **Docker Optimization**: Build optimization with .dockerignore
 
 ## 🔧 Prerequisites
 
@@ -270,6 +279,21 @@ kubectl get service grpc-server-h2c -o yaml | grep appProtocol
 
 - [GKE_Guide.md](GKE_Guide.md) - GKE deployment and operation best practices
 - [certs/README.md](certs/README.md) - TLS certificate generation guide
+- [specs/](specs/) - Project planning and implementation documents
+  - [implementation_plan.md](specs/implementation_plan.md) - Best practices improvement plan
+  - [task.md](specs/task.md) - Task checklist
+  - [walkthrough.md](specs/walkthrough.md) - Project completion summary
+
+## 🔒 Security and Best Practices
+
+This project follows security and operational best practices:
+
+- ✅ **Non-root Execution**: All containers run as non-root user (65532)
+- ✅ **Least Privilege**: Unnecessary Linux capabilities dropped
+- ✅ **Graceful Shutdown**: Safe server termination with request completion
+- ✅ **Enhanced Health Probes**: Configured timeout and failureThreshold
+- ✅ **Resource Optimization**: Requests/limits optimized for GKE Autopilot
+- ✅ **Error Handling**: Enhanced script error handling and debugging
 
 ## 🤝 Contributing
 
