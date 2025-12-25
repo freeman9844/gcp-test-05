@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpc-server-h2c
+  labels:
+    app: grpc-server-h2c
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: grpc-server-h2c
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: grpc-server-h2c
+        version: v1
+    spec:
+      containers:
+      - name: grpc-server
+        image: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/grpc-server-h2c:v1
+        ports:
+        - containerPort: 50051
+          name: grpc
+          protocol: TCP
+        env:
+        - name: VERSION
+          value: "v1"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          grpc:
+            port: 50051
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          grpc:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 5

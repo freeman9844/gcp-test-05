@@ -1,0 +1,10 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: grpc-backendconfig
+spec:
+  healthCheck:
+    type: HTTP2
+    port: 50051
+    requestPath: /grpc.health.v1.Health/Check
+  timeoutSec: 30
